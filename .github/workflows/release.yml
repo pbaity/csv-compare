@@ -38,14 +38,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    - name: Set asset name
-      run: echo "ASSET_NAME=csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}" >> $GITHUB_ENV
-
     - name: Build executable
+      shell: bash
       run: |
+        ASSET_NAME="csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}"
+        echo "$ASSET_NAME" >> $GITHUB_ENV
         pyinstaller --onefile --name "$ASSET_NAME" --console main.py
-      env:
-        ASSET_NAME: ${{ env.ASSET_NAME }}
+
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
