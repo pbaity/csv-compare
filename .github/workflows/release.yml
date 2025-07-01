@@ -44,16 +44,8 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller --onefile --name "$ASSET_NAME" --console main.py
-
-    - name: Debug dist folder
-      shell: bash
-      run: |
-        echo "PWD: $(pwd)"
-        echo "Contents of $(pwd):"
-        ls -la || echo "No files found in the current directory"
-        echo "Contents of $(pwd)/dist:"
-        ls -la dist || echo "dist folder not found"
-
+      env:
+        ASSET_NAME: ${{ env.ASSET_NAME }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
