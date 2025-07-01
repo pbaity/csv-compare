@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write  # Allow the workflow to create releases
+
 jobs:
   build:
     strategy:
