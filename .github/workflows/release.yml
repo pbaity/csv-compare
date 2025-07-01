@@ -16,15 +16,12 @@ jobs:
           - os: ubuntu-latest
             os_name: linux
             arch: amd64
-            ext: ""
           - os: windows-latest
             os_name: windows
             arch: amd64
-            ext: ".exe"
           - os: macos-latest
             os_name: darwin
             arch: amd64
-            ext: ""
 
     runs-on: ${{ matrix.os }}
 
@@ -42,7 +39,7 @@ jobs:
         pip install pyinstaller
 
     - name: Set asset name
-      run: echo "ASSET_NAME=csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}${{ matrix.ext }}" >> $GITHUB_ENV
+      run: echo "ASSET_NAME=csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}" >> $GITHUB_ENV
 
     - name: Build executable
       run: |
