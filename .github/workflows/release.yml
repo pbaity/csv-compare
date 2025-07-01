@@ -46,6 +46,7 @@ jobs:
         pyinstaller --onefile --name "$ASSET_NAME" --console main.py
 
     - name: Debug dist folder
+      shell: bash
       run: |
         echo "PWD: $(pwd)"
         echo "Contents of $(pwd):"
