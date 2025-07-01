@@ -152,7 +152,7 @@ def load_csv_data(file1: str, file2: str, config: ComparisonConfig) -> tuple:
         sys.exit(1)
 
 
-def perform_comparison(data1: list, data2: list, config: ComparisonConfig) -> list:
+def perform_comparison(data1: list, data2: list, config: ComparisonConfig):
     """
     Perform the CSV comparison.
     
@@ -162,7 +162,7 @@ def perform_comparison(data1: list, data2: list, config: ComparisonConfig) -> li
         config: Configuration object
         
     Returns:
-        List of ComparisonResult objects
+        ComparisonOutput object (results and duplicates)
         
     Raises:
         SystemExit: If comparison fails
@@ -170,11 +170,10 @@ def perform_comparison(data1: list, data2: list, config: ComparisonConfig) -> li
     try:
         comparator = CSVComparator(
             key_columns=config.key_columns,
-            include_unchanged_columns=config.include_unchanged_columns
+            include_unchanged_columns=config.include_unchanged_columns,
+            fail_on_duplicate_keys=config.fail_on_duplicate_keys
         )
-        
         return comparator.compare(data1, data2)
-        
     except ValueError as e:
         print(f"Error during comparison: {e}", file=sys.stderr)
         sys.exit(1)
@@ -201,8 +200,30 @@ def write_results(results: list, output_path: str) -> None:
         sys.exit(1)
 
 
-def print_summary(results: list, output_path: str) -> None:
-    """Print a summary of the comparison results."""
+def write_duplicates(duplicates: list, output_path: str) -> None:
+    """
+    Write duplicate rows to a CSV file.
+    
+    Args:
+        duplicates: List of duplicate row dicts
+        output_path: Path to output CSV file
+        
+    Raises:
+        SystemExit: If writing fails
+    """
+    if not duplicates:
+        print(f"No duplicate rows found. No duplicates file created.")
+        return
+    try:
+        CSVWriter.write_duplicates(duplicates, output_path)
+        print(f"Duplicate rows written to: {output_path}")
+    except Exception as e:
+        print(f"Error writing duplicates: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def print_summary(results: list, output_path: str, duplicates: list = None, duplicates_path: str = None) -> None:
+    """Print a summary of the comparison results and duplicates."""
     if not results:
         print("No differences found between the CSV files.")
         print(f"Empty results file created: {output_path}")
@@ -220,6 +241,8 @@ def print_summary(results: list, output_path: str) -> None:
     print(f"  - {removed_count} rows removed") 
     print(f"  - {changed_count} rows changed")
     print(f"  - {len(results)} total differences")
+    if duplicates is not None and duplicates_path is not None:
+        print(f"  - {len(duplicates)} duplicate rows written to: {duplicates_path}")
 
 
 def main() -> None:
@@ -252,13 +275,19 @@ def main() -> None:
     data1, data2 = load_csv_data(args.file1, args.file2, config)
     
     # Perform comparison
-    results = perform_comparison(data1, data2, config)
+    comparison_output = perform_comparison(data1, data2, config)
+    results = comparison_output.results
+    duplicates = comparison_output.duplicates
     
     # Write results
     write_results(results, args.output)
     
+    # Write duplicates to a separate file (default: output file with _duplicates.csv)
+    duplicates_output_path = str(Path(args.output).with_name(Path(args.output).stem + "_duplicates.csv"))
+    write_duplicates(duplicates, duplicates_output_path)
+    
     # Print summary
-    print_summary(results, args.output)
+    print_summary(results, args.output, duplicates, duplicates_output_path)
 
 
 if __name__ == "__main__":

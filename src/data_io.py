@@ -181,6 +181,30 @@ class CSVWriter:
                 writer.writeheader()
         except IOError as e:
             raise ValueError(f"Error writing output CSV file {output_path}: {e}")
+    
+    @staticmethod
+    def write_duplicates(duplicates: List[Dict[str, Any]], output_path: str) -> None:
+        """
+        Write duplicate rows to a CSV file. If the list is empty, skip file creation.
+        
+        Args:
+            duplicates: List of duplicate row dicts
+            output_path: Path to output CSV file
+            
+        Raises:
+            ValueError: If writing fails
+        """
+        if not duplicates:
+            # No duplicates, skip file creation
+            return
+        try:
+            fieldnames = list(duplicates[0].keys())
+            with open(output_path, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(duplicates)
+        except Exception as e:
+            raise ValueError(f"Error writing duplicates CSV file {output_path}: {e}")
 
 
 class SchemaValidator:

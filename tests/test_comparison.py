@@ -20,8 +20,9 @@ class TestCSVComparator(unittest.TestCase):
             {"ID": "1", "Name": "Alice", "Age": "25"},
             {"ID": "2", "Name": "Bob", "Age": "30"}
         ]
-        
-        results = self.comparator.compare(data, data)
+
+        output = self.comparator.compare(data, data)
+        results = output.results
         self.assertEqual(len(results), 0)
     
     def test_added_row(self):
@@ -31,8 +32,9 @@ class TestCSVComparator(unittest.TestCase):
             {"ID": "1", "Name": "Alice", "Age": "25"},
             {"ID": "2", "Name": "Bob", "Age": "30"}
         ]
-        
-        results = self.comparator.compare(old_data, new_data)
+
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.ADDED)
         self.assertEqual(results[0].row_key, "2")
@@ -45,8 +47,9 @@ class TestCSVComparator(unittest.TestCase):
             {"ID": "2", "Name": "Bob", "Age": "30"}
         ]
         new_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
-        
-        results = self.comparator.compare(old_data, new_data)
+
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.REMOVED)
         self.assertEqual(results[0].row_key, "2")
@@ -56,8 +59,9 @@ class TestCSVComparator(unittest.TestCase):
         """Test detection of changed rows."""
         old_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
         new_data = [{"ID": "1", "Name": "Alice", "Age": "26"}]
-        
-        results = self.comparator.compare(old_data, new_data)
+
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].row_key, "1")
@@ -69,8 +73,9 @@ class TestCSVComparator(unittest.TestCase):
         """Test comparison with multiple key columns."""
         old_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
         new_data = [{"ID": "1", "Name": "Alice", "Age": "26"}]
-        
-        results = self.multi_key_comparator.compare(old_data, new_data)
+
+        output = self.multi_key_comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].row_key, "1|Alice")
     
@@ -78,8 +83,9 @@ class TestCSVComparator(unittest.TestCase):
         """Test that different data types are compared as strings."""
         old_data = [{"ID": "1", "Score": "100"}]
         new_data = [{"ID": "1", "Score": 100}]  # Integer instead of string
-        
-        results = self.comparator.compare(old_data, new_data)
+
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         # Should be no changes since "100" == str(100)
         self.assertEqual(len(results), 0)
     
@@ -105,7 +111,8 @@ class TestCSVComparator(unittest.TestCase):
     
     def test_empty_datasets(self):
         """Test comparison of empty datasets."""
-        results = self.comparator.compare([], [])
+        output = self.comparator.compare([], [])
+        results = output.results
         self.assertEqual(len(results), 0)
     
     def test_include_unchanged_columns(self):
@@ -114,8 +121,9 @@ class TestCSVComparator(unittest.TestCase):
         
         old_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
         new_data = [{"ID": "1", "Name": "Alice", "Age": "26"}]
-        
-        results = comparator_with_unchanged.compare(old_data, new_data)
+
+        output = comparator_with_unchanged.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].changed_columns, ["Age"])
         
@@ -133,8 +141,9 @@ class TestCSVComparator(unittest.TestCase):
         """Test handling when new dataset has additional columns."""
         old_data = [{"ID": "1", "Name": "Alice"}]
         new_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
-        
-        results = self.comparator.compare(old_data, new_data)
+
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].changed_columns, ["Age"])
@@ -146,7 +155,8 @@ class TestCSVComparator(unittest.TestCase):
         old_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
         new_data = [{"ID": "1", "Name": "Alice"}]
         
-        results = self.comparator.compare(old_data, new_data)
+        output = self.comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].changed_columns, ["Age"])
@@ -162,13 +172,73 @@ class TestCSVComparator(unittest.TestCase):
         name_key_comparator = CSVComparator(key_columns=["ID", "Name"])
         
         # This should be treated as different rows (one removed, one added)
-        results = name_key_comparator.compare(old_data, new_data)
+        output = name_key_comparator.compare(old_data, new_data)
+        results = output.results
         self.assertEqual(len(results), 2)
         
         # Check that we have one removed and one added
         statuses = [result.status for result in results]
         self.assertIn(RowStatus.REMOVED, statuses)
         self.assertIn(RowStatus.ADDED, statuses)
+
+    def test_duplicates_collected_when_fail_on_duplicate_keys_false(self):
+        """Test that duplicates are collected when fail_on_duplicate_keys is False."""
+        comparator = CSVComparator(key_columns=["ID"], fail_on_duplicate_keys=False)
+        data_with_duplicates = [
+            {"ID": "1", "Name": "Alice", "Age": "25"},
+            {"ID": "1", "Name": "Bob", "Age": "30"}
+        ]
+        output = comparator.compare(data_with_duplicates, [])
+        # Both rows should be in duplicates, none in lookup/results
+        self.assertEqual(len(output.results), 0)
+        self.assertEqual(len(output.duplicates), 2)
+        self.assertEqual(output.duplicates[0]["Name"], "Alice")
+        self.assertEqual(output.duplicates[1]["Name"], "Bob")
+
+    def test_all_duplicates_collected_multiple(self):
+        """Test that all duplicates (3+) are collected when fail_on_duplicate_keys is False."""
+        comparator = CSVComparator(key_columns=["ID"], fail_on_duplicate_keys=False)
+        data_with_duplicates = [
+            {"ID": "1", "Name": "Alice", "Age": "25"},
+            {"ID": "1", "Name": "Bob", "Age": "30"},
+            {"ID": "1", "Name": "Carol", "Age": "35"}
+        ]
+        output = comparator.compare(data_with_duplicates, [])
+        self.assertEqual(len(output.results), 0)
+        self.assertEqual(len(output.duplicates), 3)
+        names = [row["Name"] for row in output.duplicates]
+        self.assertIn("Alice", names)
+        self.assertIn("Bob", names)
+        self.assertIn("Carol", names)
+
+    def test_duplicates_in_both_old_and_new(self):
+        """Test that duplicates in both old and new datasets are combined in output. """
+        comparator = CSVComparator(key_columns=["ID"], fail_on_duplicate_keys=False)
+        old_data = [
+            {"ID": "1", "Name": "Alice"},
+            {"ID": "1", "Name": "Bob"}
+        ]
+        new_data = [
+            {"ID": "2", "Name": "Carol"},
+            {"ID": "2", "Name": "Dave"}
+        ]
+        output = comparator.compare(old_data, new_data)
+        self.assertEqual(len(output.results), 0)
+        self.assertEqual(len(output.duplicates), 4)
+        old_names = [row["Name"] for row in output.duplicates if row["ID"] == "1"]
+        new_names = [row["Name"] for row in output.duplicates if row["ID"] == "2"]
+        self.assertCountEqual(old_names, ["Alice", "Bob"])
+        self.assertCountEqual(new_names, ["Carol", "Dave"])
+
+    def test_no_duplicates_when_all_keys_unique(self):
+        """Test that duplicates list is empty when all keys are unique."""
+        comparator = CSVComparator(key_columns=["ID"], fail_on_duplicate_keys=False)
+        data = [
+            {"ID": "1", "Name": "Alice"},
+            {"ID": "2", "Name": "Bob"}
+        ]
+        output = comparator.compare(data, [])
+        self.assertEqual(len(output.duplicates), 0)
 
 
 if __name__ == '__main__':
