@@ -46,7 +46,7 @@ jobs:
         pyinstaller --onefile --name "$ASSET_NAME" --console src/main.py
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ASSET_NAME }}
         path: dist/${{ env.ASSET_NAME }}
@@ -57,16 +57,18 @@ jobs:
 
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
+        pattern: csv-compare_*
+        merge-multiple: true
         path: ./dist
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: dist/*
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        name: "csv-compare ${{ github.ref_name }}"
         draft: false
         prerelease: false
       env:
