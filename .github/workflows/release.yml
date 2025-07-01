@@ -65,6 +65,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: dist/*
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
       env:
