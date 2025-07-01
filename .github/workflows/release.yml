@@ -43,7 +43,7 @@ jobs:
 
     - name: Build executable
       run: |
-        pyinstaller --onefile --name "$ASSET_NAME" --console src/main.py
+        pyinstaller --onefile --name "$ASSET_NAME" --console main.py
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
