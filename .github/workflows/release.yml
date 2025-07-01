@@ -42,7 +42,7 @@ jobs:
       shell: bash
       run: |
         ASSET_NAME="csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}"
-        echo "$ASSET_NAME" >> $GITHUB_ENV
+        echo "ASSET_NAME=$ASSET_NAME" >> $GITHUB_ENV
         pyinstaller --onefile --name "$ASSET_NAME" --console main.py
 
 
