@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write  # Allow the workflow to create releases
+  contents: write
 
 jobs:
   build:
@@ -43,14 +43,27 @@ jobs:
       run: |
         ASSET_NAME="csv-compare_${{ github.ref_name }}_${{ matrix.os_name }}_${{ matrix.arch }}"
         echo "ASSET_NAME=$ASSET_NAME" >> $GITHUB_ENV
-        pyinstaller --onefile --name "$ASSET_NAME" --console main.py
 
+        # Build binary named 'csv-compare'
+        pyinstaller --onefile --name "csv-compare" --console main.py
+
+        cd dist
+
+        if [[ "${{ matrix.os_name }}" == "windows" ]]; then
+          ARCHIVE_NAME="${ASSET_NAME}.zip"
+          powershell -Command "Compress-Archive -Path csv-compare.exe -DestinationPath $ARCHIVE_NAME"
+        else
+          ARCHIVE_NAME="${ASSET_NAME}.tar.gz"
+          tar -czvf $ARCHIVE_NAME csv-compare
+        fi
+
+        echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ASSET_NAME }}
-        path: dist/${{ env.ASSET_NAME }}*
+        path: dist/${{ env.ARCHIVE_NAME }}
 
   release:
     needs: build
