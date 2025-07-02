@@ -170,7 +170,6 @@ def perform_comparison(data1: list, data2: list, config: ComparisonConfig):
     try:
         comparator = CSVComparator(
             key_columns=config.key_columns,
-            include_unchanged_columns=config.include_unchanged_columns,
             fail_on_duplicate_keys=config.fail_on_duplicate_keys
         )
         return comparator.compare(data1, data2)

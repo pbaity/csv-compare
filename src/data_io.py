@@ -105,39 +105,24 @@ class CSVWriter:
         
         Args:
             results_data: List of result dictionaries with keys:
-                - row_key, status, changed_columns, old_values, new_values, unchanged_values
+                - row_key, status, changed_columns, old_values, new_values
             output_path: Path where to write the output CSV
-            
-        Raises:
-            ValueError: If unable to write file
         """
         if not results_data:
             # Create empty output file with just headers
             CSVWriter._write_empty_results(output_path)
             return
         
-        # Determine all unique columns that appear in the results
-        all_changed_columns = set()
-        all_unchanged_columns = set()
-        
+        # Determine all unique columns that appear in the results (from old_values and new_values)
+        all_columns = set()
         for result in results_data:
-            all_changed_columns.update(result.get('old_values', {}).keys())
-            all_changed_columns.update(result.get('new_values', {}).keys())
-            all_unchanged_columns.update(result.get('unchanged_values', {}).keys())
-        
-        # Sort columns for consistent output
-        sorted_changed_columns = sorted(all_changed_columns)
-        sorted_unchanged_columns = sorted(all_unchanged_columns)
+            all_columns.update(result.get('old_values', {}).keys())
+            all_columns.update(result.get('new_values', {}).keys())
+        sorted_columns = sorted(all_columns)
         
         # Build fieldnames for output CSV
         fieldnames = ["Row Key", "Status", "Changed Columns"]
-        
-        # Add unchanged columns (single column)
-        for column in sorted_unchanged_columns:
-            fieldnames.append(column)
-            
-        # Add changed columns (old/new pairs)
-        for column in sorted_changed_columns:
+        for column in sorted_columns:
             fieldnames.extend([f"{column} (Old)", f"{column} (New)"])
         
         try:
@@ -151,22 +136,13 @@ class CSVWriter:
                         "Status": result['status'],
                         "Changed Columns": ", ".join(result.get('changed_columns', []))
                     }
-                    
-                    # Add unchanged column values
-                    for column in sorted_unchanged_columns:
-                        value = result.get('unchanged_values', {}).get(column, "")
-                        row_data[column] = value
-                    
-                    # Add old and new values for changed columns
-                    for column in sorted_changed_columns:
+                    # Add old and new values for all columns
+                    for column in sorted_columns:
                         old_value = result.get('old_values', {}).get(column, "")
                         new_value = result.get('new_values', {}).get(column, "")
-                        
                         row_data[f"{column} (Old)"] = old_value
                         row_data[f"{column} (New)"] = new_value
-                    
                     writer.writerow(row_data)
-                    
         except IOError as e:
             raise ValueError(f"Error writing output CSV file {output_path}: {e}")
     

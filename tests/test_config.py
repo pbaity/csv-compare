@@ -17,14 +17,11 @@ class TestComparisonConfig(unittest.TestCase):
         config = ComparisonConfig(
             key_columns=["ID"],
             excluded_columns=["Notes"],
-            schema_mismatch_behavior="warn",
-            include_unchanged_columns=False
+            schema_mismatch_behavior="warn"
         )
-        
         self.assertEqual(config.key_columns, ["ID"])
         self.assertEqual(config.excluded_columns, ["Notes"])
         self.assertEqual(config.schema_mismatch_behavior, "warn")
-        self.assertFalse(config.include_unchanged_columns)
     
     def test_empty_key_columns_error(self):
         """Test error when key_columns is empty."""
@@ -32,8 +29,7 @@ class TestComparisonConfig(unittest.TestCase):
             ComparisonConfig(
                 key_columns=[],
                 excluded_columns=[],
-                schema_mismatch_behavior="warn",
-                include_unchanged_columns=False
+                schema_mismatch_behavior="warn"
             )
         self.assertIn("key_columns cannot be empty", str(context.exception))
     
@@ -43,8 +39,7 @@ class TestComparisonConfig(unittest.TestCase):
             ComparisonConfig(
                 key_columns=["ID"],
                 excluded_columns=[],
-                schema_mismatch_behavior="invalid",
-                include_unchanged_columns=False
+                schema_mismatch_behavior="invalid"
             )
         self.assertIn("schema_mismatch_behavior must be one of", str(context.exception))
     
@@ -54,8 +49,7 @@ class TestComparisonConfig(unittest.TestCase):
             ComparisonConfig(
                 key_columns="ID",  # Should be a list
                 excluded_columns=[],
-                schema_mismatch_behavior="warn",
-                include_unchanged_columns=False
+                schema_mismatch_behavior="warn"
             )
         self.assertIn("key_columns must be a list", str(context.exception))
 
@@ -79,8 +73,7 @@ class TestConfigLoader(unittest.TestCase):
         config_data = {
             "key_columns": ["ID", "Name"],
             "excluded_columns": ["Notes"],
-            "schema_mismatch_behavior": "fail",
-            "include_unchanged_columns": True
+            "schema_mismatch_behavior": "fail"
         }
         
         config_path = os.path.join(self.temp_dir, "test_config.json")
@@ -92,7 +85,6 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config.key_columns, ["ID", "Name"])
         self.assertEqual(config.excluded_columns, ["Notes"])
         self.assertEqual(config.schema_mismatch_behavior, "fail")
-        self.assertTrue(config.include_unchanged_columns)
     
     def test_load_config_with_defaults(self):
         """Test loading configuration with default values."""
@@ -110,7 +102,6 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config.key_columns, ["ID"])
         self.assertEqual(config.excluded_columns, [])  # Default
         self.assertEqual(config.schema_mismatch_behavior, "warn")  # Default
-        self.assertFalse(config.include_unchanged_columns)  # Default
     
     def test_missing_file_error(self):
         """Test error when configuration file doesn't exist."""
@@ -174,7 +165,6 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config.key_columns, ["ID", "Name"])
         self.assertEqual(config.excluded_columns, ["Last Login", "Notes"])
         self.assertEqual(config.schema_mismatch_behavior, "warn")
-        self.assertFalse(config.include_unchanged_columns)
 
 
 if __name__ == '__main__':

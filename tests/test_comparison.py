@@ -66,8 +66,8 @@ class TestCSVComparator(unittest.TestCase):
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].row_key, "1")
         self.assertEqual(results[0].changed_columns, ["Age"])
-        self.assertEqual(results[0].old_values, {"Age": "25"})
-        self.assertEqual(results[0].new_values, {"Age": "26"})
+        self.assertEqual(results[0].old_values, {"Name": "Alice", "Age": "25"})
+        self.assertEqual(results[0].new_values, {"Name": "Alice", "Age": "26"})
     
     def test_multiple_key_columns(self):
         """Test comparison with multiple key columns."""
@@ -115,28 +115,6 @@ class TestCSVComparator(unittest.TestCase):
         results = output.results
         self.assertEqual(len(results), 0)
     
-    def test_include_unchanged_columns(self):
-        """Test including unchanged columns in output."""
-        comparator_with_unchanged = CSVComparator(key_columns=["ID"], include_unchanged_columns=True)
-        
-        old_data = [{"ID": "1", "Name": "Alice", "Age": "25"}]
-        new_data = [{"ID": "1", "Name": "Alice", "Age": "26"}]
-
-        output = comparator_with_unchanged.compare(old_data, new_data)
-        results = output.results
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].changed_columns, ["Age"])
-        
-        # Changed columns should be in old/new values
-        self.assertIn("Age", results[0].old_values)
-        self.assertIn("Age", results[0].new_values)
-        self.assertEqual(results[0].old_values["Age"], "25")
-        self.assertEqual(results[0].new_values["Age"], "26")
-        
-        # Unchanged columns should be in unchanged_values
-        self.assertIn("Name", results[0].unchanged_values)
-        self.assertEqual(results[0].unchanged_values["Name"], "Alice")
-    
     def test_column_added_to_new_dataset(self):
         """Test handling when new dataset has additional columns."""
         old_data = [{"ID": "1", "Name": "Alice"}]
@@ -147,8 +125,8 @@ class TestCSVComparator(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].changed_columns, ["Age"])
-        self.assertEqual(results[0].old_values, {"Age": ""})  # Missing value becomes empty string
-        self.assertEqual(results[0].new_values, {"Age": "25"})
+        self.assertEqual(results[0].old_values, {"Name": "Alice", "Age": ""})  # All non-key columns
+        self.assertEqual(results[0].new_values, {"Name": "Alice", "Age": "25"})
     
     def test_column_removed_from_new_dataset(self):
         """Test handling when new dataset is missing columns."""
@@ -160,8 +138,8 @@ class TestCSVComparator(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].status, RowStatus.CHANGED)
         self.assertEqual(results[0].changed_columns, ["Age"])
-        self.assertEqual(results[0].old_values, {"Age": "25"})
-        self.assertEqual(results[0].new_values, {"Age": ""})  # Missing value becomes empty string
+        self.assertEqual(results[0].old_values, {"Name": "Alice", "Age": "25"})
+        self.assertEqual(results[0].new_values, {"Name": "Alice", "Age": ""})
     
     def test_key_columns_excluded_from_comparison(self):
         """Test that key columns are not included in change detection."""

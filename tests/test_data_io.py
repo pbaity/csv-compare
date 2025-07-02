@@ -145,16 +145,14 @@ class TestCSVWriter(unittest.TestCase):
                 "status": "Changed",
                 "changed_columns": ["Age"],
                 "old_values": {"Age": "25"},
-                "new_values": {"Age": "26"},
-                "unchanged_values": {}
+                "new_values": {"Age": "26"}
             },
             {
                 "row_key": "2", 
                 "status": "Added",
                 "changed_columns": [],
                 "old_values": {},
-                "new_values": {"ID": "2", "Name": "Bob", "Age": "30"},
-                "unchanged_values": {}
+                "new_values": {"ID": "2", "Name": "Bob", "Age": "30"}
             }
         ]
         
@@ -181,7 +179,13 @@ class TestCSVWriter(unittest.TestCase):
         self.assertEqual(rows[1]["Row Key"], "2")
         self.assertEqual(rows[1]["Status"], "Added")
         self.assertEqual(rows[1]["Changed Columns"], "")
-    
+        self.assertEqual(rows[1]["ID (Old)"], "")
+        self.assertEqual(rows[1]["ID (New)"], "2")
+        self.assertEqual(rows[1]["Name (Old)"], "")
+        self.assertEqual(rows[1]["Name (New)"], "Bob")
+        self.assertEqual(rows[1]["Age (Old)"], "")
+        self.assertEqual(rows[1]["Age (New)"], "30")
+
     def test_write_empty_results(self):
         """Test writing empty results."""
         output_path = os.path.join(self.temp_dir, "empty_output.csv")
@@ -196,7 +200,7 @@ class TestCSVWriter(unittest.TestCase):
         
         self.assertEqual(len(rows), 0)
         self.assertEqual(list(reader.fieldnames), ["Row Key", "Status", "Changed Columns"])
-    
+
     def test_write_multiple_changed_columns(self):
         """Test writing results with multiple changed columns."""
         results_data = [
@@ -205,8 +209,7 @@ class TestCSVWriter(unittest.TestCase):
                 "status": "Changed", 
                 "changed_columns": ["Name", "Age"],
                 "old_values": {"Name": "Alice", "Age": "25"},
-                "new_values": {"Name": "Alicia", "Age": "26"},
-                "unchanged_values": {}
+                "new_values": {"Name": "Alicia", "Age": "26"}
             }
         ]
         
@@ -221,34 +224,6 @@ class TestCSVWriter(unittest.TestCase):
         self.assertEqual(rows[0]["Changed Columns"], "Name, Age")
         self.assertEqual(rows[0]["Name (Old)"], "Alice")
         self.assertEqual(rows[0]["Name (New)"], "Alicia")
-        self.assertEqual(rows[0]["Age (Old)"], "25")
-        self.assertEqual(rows[0]["Age (New)"], "26")
-    
-    def test_write_results_with_unchanged_columns(self):
-        """Test writing results that include unchanged columns."""
-        results_data = [
-            {
-                "row_key": "1",
-                "status": "Changed",
-                "changed_columns": ["Age"],
-                "old_values": {"Age": "25"},
-                "new_values": {"Age": "26"},
-                "unchanged_values": {"Name": "Alice", "Department": "Engineering"}
-            }
-        ]
-        
-        output_path = os.path.join(self.temp_dir, "unchanged_output.csv")
-        CSVWriter.write_comparison_results(results_data, output_path)
-        
-        with open(output_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-        
-        self.assertEqual(len(rows), 1)
-        # Check that unchanged columns appear without (Old)/(New) suffix
-        self.assertEqual(rows[0]["Name"], "Alice")
-        self.assertEqual(rows[0]["Department"], "Engineering")
-        # Check that changed columns have (Old)/(New) suffix
         self.assertEqual(rows[0]["Age (Old)"], "25")
         self.assertEqual(rows[0]["Age (New)"], "26")
 

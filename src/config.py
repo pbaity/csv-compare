@@ -16,7 +16,6 @@ class ComparisonConfig:
     key_columns: List[str]
     excluded_columns: List[str]
     schema_mismatch_behavior: str
-    include_unchanged_columns: bool
     fail_on_duplicate_keys: bool = True
     
     def __post_init__(self):
@@ -37,9 +36,6 @@ class ComparisonConfig:
         valid_behaviors = ["fail", "warn", "ignore"]
         if self.schema_mismatch_behavior not in valid_behaviors:
             raise ValueError(f"schema_mismatch_behavior must be one of {valid_behaviors}")
-        
-        if not isinstance(self.include_unchanged_columns, bool):
-            raise ValueError("include_unchanged_columns must be a boolean")
         
         if not isinstance(self.fail_on_duplicate_keys, bool):
             raise ValueError("fail_on_duplicate_keys must be a boolean")
@@ -92,7 +88,6 @@ class ConfigLoader:
         defaults = {
             "excluded_columns": [],
             "schema_mismatch_behavior": "warn",
-            "include_unchanged_columns": False,
             "fail_on_duplicate_keys": True
         }
         
@@ -106,7 +101,7 @@ class ConfigLoader:
                 config_data[key] = default_value
         
         # Validate that we don't have unknown fields
-        known_fields = {"key_columns", "excluded_columns", "schema_mismatch_behavior", "include_unchanged_columns", "fail_on_duplicate_keys"}
+        known_fields = {"key_columns", "excluded_columns", "schema_mismatch_behavior", "fail_on_duplicate_keys"}
         unknown_fields = set(config_data.keys()) - known_fields
         if unknown_fields:
             raise ValueError(f"Unknown configuration fields: {unknown_fields}")
@@ -115,7 +110,6 @@ class ConfigLoader:
             key_columns=config_data["key_columns"],
             excluded_columns=config_data["excluded_columns"],
             schema_mismatch_behavior=config_data["schema_mismatch_behavior"],
-            include_unchanged_columns=config_data["include_unchanged_columns"],
             fail_on_duplicate_keys=config_data["fail_on_duplicate_keys"]
         )
     
@@ -131,7 +125,6 @@ class ConfigLoader:
             "key_columns": ["ID", "Name"],
             "excluded_columns": ["Last Login", "Notes"],
             "schema_mismatch_behavior": "warn",
-            "include_unchanged_columns": False,
             "fail_on_duplicate_keys": True
         }
         
