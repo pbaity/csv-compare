@@ -138,21 +138,27 @@ class TestCSVWriter(unittest.TestCase):
         os.rmdir(self.temp_dir)
     
     def test_write_comparison_results(self):
-        """Test writing comparison results to CSV."""
+        """Test writing comparison results to CSV with new flat output format."""
         results_data = [
             {
-                "row_key": "1",
-                "status": "Changed",
-                "changed_columns": ["Age"],
-                "old_values": {"Age": "25"},
-                "new_values": {"Age": "26"}
+                "Row Key": "1",
+                "Status": "Changed",
+                "ID (Old)": "1",
+                "ID (New)": "1",
+                "Name (Old)": "Alice",
+                "Name (New)": "Alice",
+                "Age (Old)": "25",
+                "Age (New)": "26"
             },
             {
-                "row_key": "2", 
-                "status": "Added",
-                "changed_columns": [],
-                "old_values": {},
-                "new_values": {"ID": "2", "Name": "Bob", "Age": "30"}
+                "Row Key": "2",
+                "Status": "Added",
+                "ID (Old)": "",
+                "ID (New)": "2",
+                "Name (Old)": "",
+                "Name (New)": "Bob",
+                "Age (Old)": "",
+                "Age (New)": "30"
             }
         ]
         
@@ -171,14 +177,16 @@ class TestCSVWriter(unittest.TestCase):
         # Check first row (changed)
         self.assertEqual(rows[0]["Row Key"], "1")
         self.assertEqual(rows[0]["Status"], "Changed")
-        self.assertEqual(rows[0]["Changed Columns"], "Age")
+        self.assertEqual(rows[0]["ID (Old)"], "1")
+        self.assertEqual(rows[0]["ID (New)"], "1")
+        self.assertEqual(rows[0]["Name (Old)"], "Alice")
+        self.assertEqual(rows[0]["Name (New)"], "Alice")
         self.assertEqual(rows[0]["Age (Old)"], "25")
         self.assertEqual(rows[0]["Age (New)"], "26")
         
         # Check second row (added)
         self.assertEqual(rows[1]["Row Key"], "2")
         self.assertEqual(rows[1]["Status"], "Added")
-        self.assertEqual(rows[1]["Changed Columns"], "")
         self.assertEqual(rows[1]["ID (Old)"], "")
         self.assertEqual(rows[1]["ID (New)"], "2")
         self.assertEqual(rows[1]["Name (Old)"], "")
@@ -199,17 +207,21 @@ class TestCSVWriter(unittest.TestCase):
             rows = list(reader)
         
         self.assertEqual(len(rows), 0)
-        self.assertEqual(list(reader.fieldnames), ["Row Key", "Status", "Changed Columns"])
+        # Default headers for empty results
+        self.assertEqual(list(reader.fieldnames), ["Row Key", "Status", "Changed Columns"])  # Only default columns
 
     def test_write_multiple_changed_columns(self):
-        """Test writing results with multiple changed columns."""
+        """Test writing results with multiple changed columns in new flat format."""
         results_data = [
             {
-                "row_key": "1",
-                "status": "Changed", 
-                "changed_columns": ["Name", "Age"],
-                "old_values": {"Name": "Alice", "Age": "25"},
-                "new_values": {"Name": "Alicia", "Age": "26"}
+                "Row Key": "1",
+                "Status": "Changed",
+                "ID (Old)": "1",
+                "ID (New)": "1",
+                "Name (Old)": "Alice",
+                "Name (New)": "Alicia",
+                "Age (Old)": "25",
+                "Age (New)": "26"
             }
         ]
         
@@ -221,7 +233,10 @@ class TestCSVWriter(unittest.TestCase):
             rows = list(reader)
         
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["Changed Columns"], "Name, Age")
+        self.assertEqual(rows[0]["Row Key"], "1")
+        self.assertEqual(rows[0]["Status"], "Changed")
+        self.assertEqual(rows[0]["ID (Old)"], "1")
+        self.assertEqual(rows[0]["ID (New)"], "1")
         self.assertEqual(rows[0]["Name (Old)"], "Alice")
         self.assertEqual(rows[0]["Name (New)"], "Alicia")
         self.assertEqual(rows[0]["Age (Old)"], "25")

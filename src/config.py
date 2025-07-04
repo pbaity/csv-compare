@@ -39,6 +39,15 @@ class ComparisonConfig:
         
         if not isinstance(self.fail_on_duplicate_keys, bool):
             raise ValueError("fail_on_duplicate_keys must be a boolean")
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to a dictionary."""
+        return {
+            "key_columns": self.key_columns,
+            "excluded_columns": self.excluded_columns,
+            "schema_mismatch_behavior": self.schema_mismatch_behavior,
+            "fail_on_duplicate_keys": self.fail_on_duplicate_keys
+        }
 
 
 class ConfigLoader:

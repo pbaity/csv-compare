@@ -13,7 +13,7 @@ from typing import Optional
 
 from src.config import ConfigLoader, ComparisonConfig
 from src.data_io import CSVReader, CSVWriter, SchemaValidator
-from src.comparison import CSVComparator
+from src.comparison import DataComparator
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -168,10 +168,7 @@ def perform_comparison(data1: list, data2: list, config: ComparisonConfig):
         SystemExit: If comparison fails
     """
     try:
-        comparator = CSVComparator(
-            key_columns=config.key_columns,
-            fail_on_duplicate_keys=config.fail_on_duplicate_keys
-        )
+        comparator = DataComparator(config.to_dict())
         return comparator.compare(data1, data2)
     except ValueError as e:
         print(f"Error during comparison: {e}", file=sys.stderr)
@@ -191,8 +188,7 @@ def write_results(results: list, output_path: str) -> None:
     """
     try:
         # Serialize ComparisonResult objects to plain dictionaries
-        results_data = [result.to_dict() for result in results]
-        CSVWriter.write_comparison_results(results_data, output_path)
+        CSVWriter.write_comparison_results(results, output_path)
         
     except ValueError as e:
         print(f"Error writing results: {e}", file=sys.stderr)
@@ -228,10 +224,15 @@ def print_summary(results: list, output_path: str, duplicates: list = None, dupl
         print(f"Empty results file created: {output_path}")
         return
     
-    # Count different types of changes
-    added_count = sum(1 for r in results if r.status.value == "Added")
-    removed_count = sum(1 for r in results if r.status.value == "Removed")
-    changed_count = sum(1 for r in results if r.status.value == "Changed")
+    added_count, removed_count, changed_count = 0, 0, 0
+    for r in results:
+        status = r.get("Status")
+        if status == "Added":
+            added_count += 1
+        elif status == "Removed":
+            removed_count += 1
+        elif status == "Changed":
+            changed_count += 1
     
     print(f"Comparison completed successfully!")
     print(f"Results written to: {output_path}")
@@ -274,9 +275,7 @@ def main() -> None:
     data1, data2 = load_csv_data(args.file1, args.file2, config)
     
     # Perform comparison
-    comparison_output = perform_comparison(data1, data2, config)
-    results = comparison_output.results
-    duplicates = comparison_output.duplicates
+    results, duplicates = perform_comparison(data1, data2, config)
     
     # Write results
     write_results(results, args.output)

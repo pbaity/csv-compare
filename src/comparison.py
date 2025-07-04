@@ -5,9 +5,11 @@ This module handles the in-memory comparison of CSV data structures,
 independent of file I/O operations.
 """
 
-from typing import Dict, List, Any, Set, Tuple
+from typing import Dict, List, Any, Set, Tuple, Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
+import json
+import hashlib
 
 
 class RowStatus(Enum):
@@ -43,55 +45,60 @@ class ComparisonOutput:
     duplicates: List[Dict[str, str]]
 
 
-class CSVComparator:
-    """Handles comparison logic between two CSV datasets."""
+class DataComparator:
+    """Handles comparison logic between two datasets."""
 
-    def __init__(self, key_columns: List[str], fail_on_duplicate_keys: bool = True):
+    def __init__(self, config: Dict[str, Any]):
         """
         Initialize the comparator.
 
         Args:
-            key_columns: List of column names that uniquely identify rows
+            config: Dictionary containing configuration settings
         """
-        self.key_columns = key_columns
-        self.fail_on_duplicate_keys = fail_on_duplicate_keys
+        self.key_columns: List[str] = config.get("key_columns", [])
+        self.fail_on_duplicate_keys = config.get("fail_on_duplicate_keys", True)
 
-    def compare(self, old_data: List[Dict[str, str]], new_data: List[Dict[str, str]]) -> ComparisonOutput:
+
+    def compare(self, old_data: Iterable[Mapping[str, str]], new_data: Iterable[Mapping[str, str]]) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
         """
         Compare two datasets and return comparison results and duplicates.
 
         Args:
-            old_data: List of dictionaries representing rows from first CSV
-            new_data: List of dictionaries representing rows from second CSV
+            old_data: List of dictionaries representing rows from first dataset
+            new_data: List of dictionaries representing rows from second dataset
 
         Returns:
-            ComparisonOutput: Contains list of ComparisonResult objects and all duplicate rows from both datasets.
-
-        Raises:
-            ValueError: If key columns are missing from data
+            Tuple containing:
+                - List of dictionaries representing the comparison results
+                - List of dictionaries representing all duplicate rows from both datasets
         """
         self._validate_key_columns(old_data, new_data)
-        old_rows, old_duplicates = self._create_row_lookup(old_data)
-        new_rows, new_duplicates = self._create_row_lookup(new_data)
+        old_rows, old_columns, old_duplicates = self._create_row_lookup(old_data)
+        new_rows, new_columns, new_duplicates = self._create_row_lookup(new_data)
 
-        # Gather all non-key columns from both datasets
-        all_columns = set()
-        for row in old_data + new_data:
-            all_columns.update(row.keys())
+        all_duplicates = old_duplicates + new_duplicates
+        
+        # If there are no rows in either dataset, return empty results
+        if not old_rows and not new_rows:
+            return [], all_duplicates
+
+        all_row_keys = set(old_rows.keys()) | set(new_rows.keys())
+        all_columns = old_columns | new_columns
         non_key_columns = sorted(all_columns - set(self.key_columns))
-
+        
         results = []
-        all_keys = set(old_rows.keys()) | set(new_rows.keys())
 
-        for row_key in sorted(all_keys):
-            old_row = old_rows.get(row_key)
-            new_row = new_rows.get(row_key)
+        for row_key in sorted(all_row_keys):
+            old_row_dict = old_rows.get(row_key)
+            new_row_dict = new_rows.get(row_key)
+            old_row = old_row_dict.get("row_data") if old_row_dict else None
+            new_row = new_row_dict.get("row_data") if new_row_dict else None
 
             if old_row is None:
                 # Added row
                 old_values = {col: "" for col in non_key_columns}
                 new_values = {col: new_row.get(col, "") for col in non_key_columns}
-                results.append(ComparisonResult(
+                results.append(self._format_compared_row(
                     row_key=row_key,
                     status=RowStatus.ADDED,
                     changed_columns=[],
@@ -102,7 +109,7 @@ class CSVComparator:
                 # Removed row
                 old_values = {col: old_row.get(col, "") for col in non_key_columns}
                 new_values = {col: "" for col in non_key_columns}
-                results.append(ComparisonResult(
+                results.append(self._format_compared_row(
                     row_key=row_key,
                     status=RowStatus.REMOVED,
                     changed_columns=[],
@@ -111,27 +118,33 @@ class CSVComparator:
                 ))
             else:
                 # Changed or unchanged row
-                changed_columns = []
-                old_values = {}
-                new_values = {}
-                for col in non_key_columns:
-                    old_val = old_row.get(col, "")
-                    new_val = new_row.get(col, "")
-                    old_values[col] = old_val
-                    new_values[col] = new_val
-                    if str(old_val) != str(new_val):
-                        changed_columns.append(col)
-                if changed_columns:
-                    results.append(ComparisonResult(
-                        row_key=row_key,
-                        status=RowStatus.CHANGED,
-                        changed_columns=changed_columns,
-                        old_values=old_values,
-                        new_values=new_values,
-                    ))
+                # Use row_digest for fast equality check
+                old_digest = old_row_dict.get("row_digest") if old_row_dict else None
+                new_digest = new_row_dict.get("row_digest") if new_row_dict else None
+                if old_digest == new_digest:
+                    # Rows are identical, skip output (unchanged)
+                    pass
+                else:
+                    changed_columns = []
+                    old_values = {}
+                    new_values = {}
+                    for col in non_key_columns:
+                        old_val = old_row.get(col, "")
+                        new_val = new_row.get(col, "")
+                        old_values[col] = old_val
+                        new_values[col] = new_val
+                        if str(old_val) != str(new_val):
+                            changed_columns.append(col)
+                    if changed_columns:
+                        results.append(self._format_compared_row(
+                            row_key=row_key,
+                            status=RowStatus.CHANGED,
+                            changed_columns=changed_columns,
+                            old_values=old_values,
+                            new_values=new_values,
+                        ))
 
-        all_duplicates = old_duplicates + new_duplicates
-        return ComparisonOutput(results=results, duplicates=all_duplicates)
+        return results, all_duplicates
 
     def _validate_key_columns(self, old_data: List[Dict[str, str]], new_data: List[Dict[str, str]]) -> None:
         """Validate that key columns exist in both datasets."""
@@ -145,7 +158,7 @@ class CSVComparator:
                 if missing_keys:
                     raise ValueError(f"Missing key columns in {name} dataset: {missing_keys}")
 
-    def _create_row_lookup(self, data: List[Dict[str, str]]) -> Tuple[Dict[str, Dict[str, str]], List[Dict[str, str]]]:
+    def _create_row_lookup(self, data: List[Dict[str, str]]) -> Tuple[Dict[str, Dict[str, str]], Set[str], List[Dict[str, str]]]:
         """
         Create a lookup dictionary keyed by concatenated key column values.
 
@@ -164,6 +177,7 @@ class CSVComparator:
         """
         lookup = {}
         duplicates = []
+        columns = set()
         duplicate_keys = set()
 
         for row in data:
@@ -178,14 +192,21 @@ class CSVComparator:
                 if self.fail_on_duplicate_keys:
                     raise ValueError(f"Duplicate row key found: {row_key}")
                 # Move the original to duplicates, mark key as duplicate
-                duplicates.append(lookup.pop(row_key))
+                duplicate_row = lookup.pop(row_key)["row_data"]
+                duplicates.append(duplicate_row)
                 duplicates.append(row)
                 duplicate_keys.add(row_key)
                 continue
 
-            lookup[row_key] = row
+            row_digest = self._generate_row_digest(row)
+            columns.update(row.keys())
 
-        return lookup, duplicates
+            lookup[row_key] = {
+                "row_digest": row_digest,
+                "row_data": row
+            }
+
+        return lookup, columns, duplicates
 
     def _generate_row_key(self, row: Dict[str, str]) -> str:
         """Generate a unique key for a row by concatenating key column values."""
@@ -195,3 +216,44 @@ class CSVComparator:
                 raise ValueError(f"Key column '{key_col}' not found in row")
             key_values.append(str(row[key_col]))
         return "|".join(key_values)
+    
+    def _generate_row_digest(self, row: Dict[str, str]) -> str:
+        """Generate a SHA-256 digest for a row based on its content."""
+        # Convert to a JSON string with sorted keys to ensure consistent order
+        dict_str = json.dumps(row, sort_keys=True)
+        return hashlib.sha256(dict_str.encode('utf-8')).hexdigest()
+    
+    def _format_compared_row(
+        self, row_key: str, status: RowStatus, changed_columns: List[str],
+        old_values: Dict[str, str], new_values: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        Format a compared row into a dictionary for output.
+
+        Args:
+            row_key: Unique key for the row
+            status: Status of the row (added, removed, changed)
+            changed_columns: List of columns that changed
+            old_values: Dictionary of old values for non-key columns
+            new_values: Dictionary of new values for non-key columns
+
+        Returns:
+            Formatted dictionary representing the compared row. It will contain:
+            - 'Row Key': Unique key for the row
+            - 'Status': Status of the row
+            - 'Changed Columns': String of changed columns, space-separated
+            - A variable number of additional keys for each column, with suffixes "(Old)" and "(New)" for old and new values respectively.
+        """
+        # Union of all columns present in old_values or new_values
+        all_columns = set(old_values.keys()) | set(new_values.keys())
+        sorted_columns = sorted(all_columns)
+
+        row_data = {
+            "Row Key": row_key,
+            "Status": status.value,
+            "Changed Columns": ", ".join(changed_columns)
+        }
+        for column in sorted_columns:
+            row_data[f"{column} (Old)"] = old_values.get(column, "")
+            row_data[f"{column} (New)"] = new_values.get(column, "")
+        return row_data

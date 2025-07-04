@@ -113,36 +113,14 @@ class CSVWriter:
             CSVWriter._write_empty_results(output_path)
             return
         
-        # Determine all unique columns that appear in the results (from old_values and new_values)
-        all_columns = set()
-        for result in results_data:
-            all_columns.update(result.get('old_values', {}).keys())
-            all_columns.update(result.get('new_values', {}).keys())
-        sorted_columns = sorted(all_columns)
-        
-        # Build fieldnames for output CSV
-        fieldnames = ["Row Key", "Status", "Changed Columns"]
-        for column in sorted_columns:
-            fieldnames.extend([f"{column} (Old)", f"{column} (New)"])
-        
+        # The below code is updated to use the keys from the first result dict for fieldnames.
+        fieldnames = list(results_data[0].keys())
         try:
             with open(output_path, 'w', encoding='utf-8', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
-                
                 for result in results_data:
-                    row_data = {
-                        "Row Key": result['row_key'],
-                        "Status": result['status'],
-                        "Changed Columns": ", ".join(result.get('changed_columns', []))
-                    }
-                    # Add old and new values for all columns
-                    for column in sorted_columns:
-                        old_value = result.get('old_values', {}).get(column, "")
-                        new_value = result.get('new_values', {}).get(column, "")
-                        row_data[f"{column} (Old)"] = old_value
-                        row_data[f"{column} (New)"] = new_value
-                    writer.writerow(row_data)
+                    writer.writerow(result)
         except IOError as e:
             raise ValueError(f"Error writing output CSV file {output_path}: {e}")
     
