@@ -251,7 +251,7 @@ class DataComparator:
         row_data = {
             "Row Key": row_key,
             "Status": status.value,
-            "Changed Columns": ", ".join(changed_columns)
+            "Changed Columns": " ".join(changed_columns)
         }
         for column in sorted_columns:
             row_data[f"{column} (Old)"] = old_values.get(column, "")
