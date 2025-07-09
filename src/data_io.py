@@ -55,6 +55,9 @@ class CSVReader:
                                      if field not in excluded_columns]
                 
                 for row_num, row in enumerate(reader, start=2):  # Start at 2 since header is row 1
+                    if not any(field.strip() for field in row.values()):
+                        continue  # skip completely empty rows
+
                     # Filter out excluded columns from this row
                     filtered_row = {field: row.get(field, '') for field in included_fieldnames}
                     data.append(filtered_row)
